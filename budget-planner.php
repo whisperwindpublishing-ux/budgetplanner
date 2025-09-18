@@ -209,9 +209,9 @@ function bpp_handle_form_submission() {
     $table_accounts = $wpdb->prefix . 'bpp_accounts';
     $table_items = $wpdb->prefix . 'bpp_line_items';
     $table_locations = $wpdb->prefix . 'bpp_locations';
-    
+
     $account_id = isset($_POST['account_id']) ? intval($_POST['account_id']) : 0;
-    
+
     $location_name = sanitize_text_field($_POST['location_name']);
 
     $account_data = [
@@ -225,10 +225,8 @@ function bpp_handle_form_submission() {
     ];
 
     if ($account_id > 0) {
-        // Update existing account
         $wpdb->update($table_accounts, $account_data, ['id' => $account_id]);
     } else {
-        // Insert new account
         $account_data['created_at'] = current_time('mysql');
         if (false === $wpdb->insert($table_accounts, $account_data)) {
             wp_die('Error: The new account could not be saved to the database. Please go back and try again.');
@@ -239,7 +237,7 @@ function bpp_handle_form_submission() {
     if (empty($account_id)) {
         wp_die('Error: Could not retrieve a valid Account ID after saving. Line items cannot be processed.');
     }
-    
+
     if (!empty($location_name)) {
         $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_locations WHERE name = %s", $location_name));
         if ($exists == 0) {
@@ -247,16 +245,15 @@ function bpp_handle_form_submission() {
         }
     }
 
-    // --- NEW SAFE SAVE LOGIC FOR LINE ITEMS ---
-    $existing_item_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $table_items WHERE account_id = %d", $account_id));
+    // --- CORRECTED SAFE SAVE LOGIC FOR LINE ITEMS ---
     $submitted_item_ids = [];
 
     // Handle standard items
     if (isset($_POST['line_items']) && is_array($_POST['line_items'])) {
-        foreach ($_POST['line_items'] as $item_key => $item_data) {
+        foreach ($_POST['line_items'] as $item_data) {
             if (empty($item_data['item_name'])) continue;
 
-            $item_id = (is_numeric($item_key)) ? intval($item_key) : 0;
+            $item_id = isset($item_data['id']) ? intval($item_data['id']) : 0;
             
             $data = [
                 'account_id' => $account_id, 'item_type' => 'standard',
@@ -269,7 +266,7 @@ function bpp_handle_form_submission() {
                 'is_approved' => intval($item_data['is_approved']),
             ];
 
-            if ($item_id > 0 && in_array($item_id, $existing_item_ids)) {
+            if ($item_id > 0) {
                 $wpdb->update($table_items, $data, ['id' => $item_id]);
                 $submitted_item_ids[] = $item_id;
             } else {
@@ -279,13 +276,13 @@ function bpp_handle_form_submission() {
             }
         }
     }
-    
+
     // Handle staffing items
     if (isset($_POST['staff_items']) && is_array($_POST['staff_items'])) {
-        foreach ($_POST['staff_items'] as $item_key => $item_data) {
+        foreach ($_POST['staff_items'] as $item_data) {
             if (empty($item_data['item_name'])) continue;
 
-            $item_id = (is_numeric($item_key)) ? intval($item_key) : 0;
+            $item_id = isset($item_data['id']) ? intval($item_data['id']) : 0;
 
             $data = [
                 'account_id' => $account_id, 'item_type' => 'staffing',
@@ -299,7 +296,7 @@ function bpp_handle_form_submission() {
                 'is_approved' => intval($item_data['is_approved']),
             ];
 
-            if ($item_id > 0 && in_array($item_id, $existing_item_ids)) {
+            if ($item_id > 0) {
                 $wpdb->update($table_items, $data, ['id' => $item_id]);
                 $submitted_item_ids[] = $item_id;
             } else {
@@ -311,6 +308,7 @@ function bpp_handle_form_submission() {
     }
 
     // Delete items that were present in the DB but not submitted in the form
+    $existing_item_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM $table_items WHERE account_id = %d", $account_id));
     $items_to_delete = array_diff($existing_item_ids, $submitted_item_ids);
     if (!empty($items_to_delete)) {
         foreach ($items_to_delete as $delete_id) {
