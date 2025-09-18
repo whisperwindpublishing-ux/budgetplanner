@@ -777,7 +777,7 @@ function bpp_render_add_edit_form() {
                         </td>
                         <td><input type="number" name="line_items[<?php echo esc_attr($item->id); ?>][quantity]" class="quantity" value="<?php echo esc_attr($item->quantity); ?>" style="width:100%;"></td>
                         <td><input type="number" step="0.01" name="line_items[<?php echo esc_attr($item->id); ?>][price]" class="price" value="<?php echo esc_attr($item->price); ?>" style="width:100%;"></td>
-                        <td><span class="cost">$<?php echo number_format($item->quantity * $item->price, 2); ?></span></td>
+                        <td><span class="cost">$<?php echo number_format(floatval($item->quantity) * floatval($item->price), 2); ?></span></td>
                         <td><textarea name="line_items[<?php echo esc_attr($item->id); ?>][comment]" style="width:100%;"><?php echo esc_textarea($item->comment); ?></textarea></td>
                         <td><input type="date" name="line_items[<?php echo esc_attr($item->id); ?>][purchased_date]" value="<?php echo esc_attr($item->purchased_date); ?>"></td>
                         <td>
@@ -840,7 +840,7 @@ function bpp_render_add_edit_form() {
                         <td><input type="number" step="0.01" name="staff_items[<?php echo esc_attr($item->id); ?>][hours]" class="staff-hours" value="<?php echo esc_attr($item->hours); ?>" style="width:100%;"></td>
                         <td><input type="number" name="staff_items[<?php echo esc_attr($item->id); ?>][staff_count]" class="staff-count" value="<?php echo esc_attr($item->staff_count); ?>" style="width:100%;"></td>
                         <td><input type="number" step="0.01" name="staff_items[<?php echo esc_attr($item->id); ?>][rate]" class="staff-rate" value="<?php echo esc_attr($item->rate); ?>" style="width:100%;"></td>
-                        <td><span class="staff-cost">$0.00</span></td>
+                        <td><span class="staff-cost">$<?php echo number_format(floatval($item->weeks) * floatval($item->days) * floatval($item->hours) * floatval($item->rate) * floatval($item->staff_count), 2); ?></span></td>
                         <td><textarea name="staff_items[<?php echo esc_attr($item->id); ?>][comment]" style="width:100%;"><?php echo esc_textarea($item->comment); ?></textarea></td>
                         <td>
                             <select name="staff_items[<?php echo esc_attr($item->id); ?>][is_approved]">
@@ -890,12 +890,14 @@ function bpp_render_add_edit_form() {
                 let totalCost = 0;
                 // Sum standard items
                 document.querySelectorAll('.line-item-row').forEach(row => {
+                    if (row.style.display === 'none') return; // Skip hidden rows
                     const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
                     const price = parseFloat(row.querySelector('.price').value) || 0;
                     totalCost += quantity * price;
                 });
                 // Sum staffing items
                  document.querySelectorAll('.staff-item-row').forEach(row => {
+                    if (row.style.display === 'none') return; // Skip hidden rows
                     const weeks = parseFloat(row.querySelector('.staff-weeks').value) || 0;
                     const days = parseFloat(row.querySelector('.staff-days').value) || 0;
                     const hours = parseFloat(row.querySelector('.staff-hours').value) || 0;
