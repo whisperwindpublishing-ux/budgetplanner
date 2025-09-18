@@ -792,16 +792,16 @@ function bpp_render_add_edit_form() {
                 <!-- Placeholder for new items -->
                  <tr class="line-item-row" <?php if (!empty($line_items)) echo 'style="display:none;"';?>>
                     <td>
-                        <input type="text" name="line_items[new_std_1][item_name]" placeholder="Item Name" style="width:100%;">
-                        <input type="url" name="line_items[new_std_1][item_link]" placeholder="https://example.com" style="width:100%;">
+                        <input type="text" name="line_items[new_std_1][item_name]" data-name-template="line_items[__INDEX__][item_name]" placeholder="Item Name" style="width:100%;">
+                        <input type="url" name="line_items[new_std_1][item_link]" data-name-template="line_items[__INDEX__][item_link]" placeholder="https://example.com" style="width:100%;">
                     </td>
-                    <td><input type="number" name="line_items[new_std_1][quantity]" class="quantity" value="1" style="width:100%;"></td>
-                    <td><input type="number" step="0.01" name="line_items[new_std_1][price]" class="price" value="0.00" style="width:100%;"></td>
+                    <td><input type="number" name="line_items[new_std_1][quantity]" data-name-template="line_items[__INDEX__][quantity]" class="quantity" value="1" style="width:100%;"></td>
+                    <td><input type="number" step="0.01" name="line_items[new_std_1][price]" data-name-template="line_items[__INDEX__][price]" class="price" value="0.00" style="width:100%;"></td>
                     <td><span class="cost">$0.00</span></td>
-                    <td><textarea name="line_items[new_std_1][comment]" style="width:100%;"></textarea></td>
-                    <td><input type="date" name="line_items[new_std_1][purchased_date]" value=""></td>
+                    <td><textarea name="line_items[new_std_1][comment]" data-name-template="line_items[__INDEX__][comment]" style="width:100%;"></textarea></td>
+                    <td><input type="date" name="line_items[new_std_1][purchased_date]" data-name-template="line_items[__INDEX__][purchased_date]" value=""></td>
                     <td>
-                        <select name="line_items[new_std_1][is_approved]">
+                        <select name="line_items[new_std_1][is_approved]" data-name-template="line_items[__INDEX__][is_approved]">
                             <option value="1">Approved</option>
                             <option value="0" selected>Not Approved</option>
                         </select>
@@ -852,16 +852,16 @@ function bpp_render_add_edit_form() {
                     </tr>
                 <?php endforeach; endif; ?>
                  <tr class="staff-item-row" <?php if (!empty($staff_items)) echo 'style="display:none;"';?>>
-                    <td><input type="text" name="staff_items[new_staff_1][item_name]" placeholder="e.g., Lifeguard" style="width:100%;"></td>
-                    <td><input type="number" name="staff_items[new_staff_1][weeks]" class="staff-weeks" value="1" style="width:100%;"></td>
-                    <td><input type="number" name="staff_items[new_staff_1][days]" class="staff-days" value="1" style="width:100%;"></td>
-                    <td><input type="number" step="0.01" name="staff_items[new_staff_1][hours]" class="staff-hours" value="1" style="width:100%;"></td>
-                    <td><input type="number" name="staff_items[new_staff_1][staff_count]" class="staff-count" value="1" style="width:100%;"></td>
-                    <td><input type="number" step="0.01" name="staff_items[new_staff_1][rate]" class="staff-rate" value="0.00" style="width:100%;"></td>
+                    <td><input type="text" name="staff_items[new_staff_1][item_name]" data-name-template="staff_items[__INDEX__][item_name]" placeholder="e.g., Lifeguard" style="width:100%;"></td>
+                    <td><input type="number" name="staff_items[new_staff_1][weeks]" data-name-template="staff_items[__INDEX__][weeks]" class="staff-weeks" value="1" style="width:100%;"></td>
+                    <td><input type="number" name="staff_items[new_staff_1][days]" data-name-template="staff_items[__INDEX__][days]" class="staff-days" value="1" style="width:100%;"></td>
+                    <td><input type="number" step="0.01" name="staff_items[new_staff_1][hours]" data-name-template="staff_items[__INDEX__][hours]" class="staff-hours" value="1" style="width:100%;"></td>
+                    <td><input type="number" name="staff_items[new_staff_1][staff_count]" data-name-template="staff_items[__INDEX__][staff_count]" class="staff-count" value="1" style="width:100%;"></td>
+                    <td><input type="number" step="0.01" name="staff_items[new_staff_1][rate]" data-name-template="staff_items[__INDEX__][rate]" class="staff-rate" value="0.00" style="width:100%;"></td>
                     <td><span class="staff-cost">$0.00</span></td>
-                    <td><textarea name="staff_items[new_staff_1][comment]" style="width:100%;"></textarea></td>
+                    <td><textarea name="staff_items[new_staff_1][comment]" data-name-template="staff_items[__INDEX__][comment]" style="width:100%;"></textarea></td>
                     <td>
-                        <select name="staff_items[new_staff_1][is_approved]">
+                        <select name="staff_items[new_staff_1][is_approved]" data-name-template="staff_items[__INDEX__][is_approved]">
                             <option value="1">Approved</option>
                             <option value="0" selected>Not Approved</option>
                         </select>
@@ -944,14 +944,10 @@ function bpp_render_add_edit_form() {
                 const placeholder = standardContainer.querySelector('tr[style*="display:none"]');
                 if(placeholder) {
                     placeholder.style.display = '';
-                    const firstInput = placeholder.querySelector('input[type=text]');
-                    // Restore name if it was cleared
-                    if(!firstInput.name) {
-                        const newIndex = 's' + new Date().getTime();
-                        placeholder.querySelectorAll('[name]').forEach(el => {
-                            el.name = el.name.replace(/\[new_std_\d+\]/, `[${newIndex}]`);
-                        });
-                    }
+                    const newIndex = 's' + new Date().getTime();
+                    placeholder.querySelectorAll('[data-name-template]').forEach(el => {
+                        el.name = el.dataset.nameTemplate.replace('__INDEX__', newIndex);
+                    });
                     return;
                 }
 
@@ -1022,13 +1018,10 @@ function bpp_render_add_edit_form() {
                  const placeholder = staffContainer.querySelector('tr[style*="display:none"]');
                 if(placeholder) {
                     placeholder.style.display = '';
-                     const firstInput = placeholder.querySelector('input[type=text]');
-                    if(!firstInput.name) {
-                        const newIndex = 't' + new Date().getTime();
-                        placeholder.querySelectorAll('[name]').forEach(el => {
-                            el.name = el.name.replace(/\[new_staff_\d+\]/, `[${newIndex}]`);
-                        });
-                    }
+                    const newIndex = 't' + new Date().getTime();
+                    placeholder.querySelectorAll('[data-name-template]').forEach(el => {
+                        el.name = el.dataset.nameTemplate.replace('__INDEX__', newIndex);
+                    });
                     return;
                 }
 
