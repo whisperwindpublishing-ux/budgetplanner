@@ -922,9 +922,12 @@ function bpp_render_add_edit_form() {
 
             const addStandardRowListeners = (row) => {
                  row.querySelector('.remove-line-item').addEventListener('click', function() {
-                    this.closest('tr').style.display = 'none';
-                    // Clear the name to prevent submission
-                    this.closest('tr').querySelector('input[type=text]').name = '';
+                    const row = this.closest('tr');
+                    row.style.display = 'none';
+                    // Clear the name on ALL form elements in the row to prevent submission
+                    row.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.name = '';
+                    });
                     updateTotalCostSum();
                 });
 
@@ -994,8 +997,12 @@ function bpp_render_add_edit_form() {
             
             const addStaffRowListeners = (row) => {
                 row.querySelector('.remove-staff-item').addEventListener('click', function() {
-                    this.closest('tr').style.display = 'none';
-                    this.closest('tr').querySelector('input[type=text]').name = '';
+                    const row = this.closest('tr');
+                    row.style.display = 'none';
+                    // Clear the name on ALL form elements in the row to prevent submission
+                    row.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.name = '';
+                    });
                     updateTotalCostSum();
                 });
                 const inputs = ['.staff-weeks', '.staff-days', '.staff-hours', '.staff-count', '.staff-rate'];
