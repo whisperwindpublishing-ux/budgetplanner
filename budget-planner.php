@@ -1435,8 +1435,8 @@ function bpp_purchase_form_shortcode($atts) {
     
     <script type="text/javascript">
     jQuery(document).ready(function($) {
-        var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
-        var nonce = '<?php echo wp_create_nonce('bpp_frontend_nonce'); ?>';
+        var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
+        var nonce = <?php echo wp_json_encode(wp_create_nonce('bpp_frontend_nonce')); ?>;
         
         // Load available years on page load
         $.ajax({
@@ -1484,10 +1484,11 @@ function bpp_purchase_form_shortcode($atts) {
                     if (response.success) {
                         $accountSelect.empty().append('<option value="">-- Select Account --</option>');
                         $.each(response.data.accounts, function(index, account) {
-                            $accountSelect.append('<option value="' + account.id + '">' + 
-                                account.account_number + ' - ' + account.account_title + 
-                                (account.location_name ? ' (' + account.location_name + ')' : '') + 
-                                '</option>');
+                            var $option = $('<option></option>')
+                                .val(account.id)
+                                .text(account.account_number + ' - ' + account.account_title + 
+                                    (account.location_name ? ' (' + account.location_name + ')' : ''));
+                            $accountSelect.append($option);
                         });
                         $accountSelect.prop('disabled', false);
                     } else {
@@ -1523,12 +1524,13 @@ function bpp_purchase_form_shortcode($atts) {
                         $.each(response.data.items, function(index, item) {
                             var itemText = item.item_name;
                             if (item.quantity != null && item.price != null) {
-                                itemText += ' (Qty: ' + item.quantity + ', Price: $' + parseFloat(item.price).toFixed(2) + ')';
+                                itemText += ' (Qty: ' + parseInt(item.quantity, 10) + ', Price: $' + parseFloat(item.price).toFixed(2) + ')';
                             }
                             if (item.purchased_date && item.purchased_date !== '0000-00-00' && item.purchased_date !== null) {
                                 itemText += ' [Already purchased: ' + item.purchased_date + ']';
                             }
-                            $itemSelect.append('<option value="' + item.id + '">' + itemText + '</option>');
+                            var $option = $('<option></option>').val(item.id).text(itemText);
+                            $itemSelect.append($option);
                         });
                         $itemSelect.prop('disabled', false);
                     } else {
@@ -1603,7 +1605,6 @@ function bpp_purchase_form_shortcode($atts) {
 
 // Get available years
 add_action('wp_ajax_bpp_get_years', 'bpp_ajax_get_years');
-add_action('wp_ajax_nopriv_bpp_get_years', 'bpp_ajax_get_years');
 
 function bpp_ajax_get_years() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
@@ -1627,7 +1628,6 @@ function bpp_ajax_get_years() {
 
 // Get accounts by year
 add_action('wp_ajax_bpp_get_accounts_by_year', 'bpp_ajax_get_accounts_by_year');
-add_action('wp_ajax_nopriv_bpp_get_accounts_by_year', 'bpp_ajax_get_accounts_by_year');
 
 function bpp_ajax_get_accounts_by_year() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
@@ -1660,7 +1660,6 @@ function bpp_ajax_get_accounts_by_year() {
 
 // Get line items by account
 add_action('wp_ajax_bpp_get_line_items_by_account', 'bpp_ajax_get_line_items_by_account');
-add_action('wp_ajax_nopriv_bpp_get_line_items_by_account', 'bpp_ajax_get_line_items_by_account');
 
 function bpp_ajax_get_line_items_by_account() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
@@ -1693,7 +1692,6 @@ function bpp_ajax_get_line_items_by_account() {
 
 // Submit purchase
 add_action('wp_ajax_bpp_submit_purchase', 'bpp_ajax_submit_purchase');
-add_action('wp_ajax_nopriv_bpp_submit_purchase', 'bpp_ajax_submit_purchase');
 
 function bpp_ajax_submit_purchase() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
