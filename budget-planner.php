@@ -1522,7 +1522,7 @@ function bpp_purchase_form_shortcode($atts) {
                         $itemSelect.empty().append('<option value="">-- Select Item --</option>');
                         $.each(response.data.items, function(index, item) {
                             var itemText = item.item_name;
-                            if (item.quantity && item.price) {
+                            if (item.quantity != null && item.price != null) {
                                 itemText += ' (Qty: ' + item.quantity + ', Price: $' + parseFloat(item.price).toFixed(2) + ')';
                             }
                             if (item.purchased_date && item.purchased_date !== '0000-00-00' && item.purchased_date !== null) {
@@ -1608,6 +1608,11 @@ add_action('wp_ajax_nopriv_bpp_get_years', 'bpp_ajax_get_years');
 function bpp_ajax_get_years() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
     
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
+    
     global $wpdb;
     $table_accounts = $wpdb->prefix . 'bpp_accounts';
     
@@ -1626,6 +1631,11 @@ add_action('wp_ajax_nopriv_bpp_get_accounts_by_year', 'bpp_ajax_get_accounts_by_
 
 function bpp_ajax_get_accounts_by_year() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
+    
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
     
     $year = isset($_POST['year']) ? intval($_POST['year']) : 0;
     
@@ -1655,6 +1665,11 @@ add_action('wp_ajax_nopriv_bpp_get_line_items_by_account', 'bpp_ajax_get_line_it
 function bpp_ajax_get_line_items_by_account() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
     
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
+    
     $account_id = isset($_POST['account_id']) ? intval($_POST['account_id']) : 0;
     
     if (!$account_id) {
@@ -1683,6 +1698,11 @@ add_action('wp_ajax_nopriv_bpp_submit_purchase', 'bpp_ajax_submit_purchase');
 function bpp_ajax_submit_purchase() {
     check_ajax_referer('bpp_frontend_nonce', 'nonce');
     
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to submit purchases.']);
+    }
+    
     $line_item_id = isset($_POST['line_item_id']) ? intval($_POST['line_item_id']) : 0;
     $purchase_date = isset($_POST['purchase_date']) ? sanitize_text_field($_POST['purchase_date']) : '';
     $comment = isset($_POST['comment']) ? sanitize_textarea_field($_POST['comment']) : '';
@@ -1699,6 +1719,16 @@ function bpp_ajax_submit_purchase() {
     
     global $wpdb;
     $table_items = $wpdb->prefix . 'bpp_line_items';
+    
+    // Verify that the line item exists before updating
+    $item_exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_items WHERE id = %d",
+        $line_item_id
+    ));
+    
+    if (!$item_exists) {
+        wp_send_json_error(['message' => 'Invalid line item specified.']);
+    }
     
     // Update the line item
     $update_data = [

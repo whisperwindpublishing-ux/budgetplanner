@@ -46,4 +46,11 @@ Simply add the following shortcode to any page or post:
 
 ### Permissions
 
-The shortcode is available to all users (logged in and logged out). If you need to restrict access, you can use a membership plugin or add custom capability checks to the AJAX handlers.
+**Authentication Required**: Users must be logged in to use this form. The shortcode will work for any logged-in user. If you need to restrict access to specific user roles or capabilities, you can modify the capability checks in the AJAX handlers in the plugin code.
+
+For example, to restrict to users with the 'edit_posts' capability, you could modify the AJAX handlers to include:
+```php
+if (!current_user_can('edit_posts')) {
+    wp_send_json_error(['message' => 'You do not have permission to perform this action.']);
+}
+```
