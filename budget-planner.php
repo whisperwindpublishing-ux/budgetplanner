@@ -1374,3 +1374,387 @@ function bpp_generate_pdf_handler() {
     exit;
 }
 
+
+// =============================================================================
+// Frontend Shortcode for Purchase Reporting
+// =============================================================================
+
+add_shortcode('budget_purchase_form', 'bpp_purchase_form_shortcode');
+
+/**
+ * Shortcode to render the frontend purchase reporting form
+ */
+function bpp_purchase_form_shortcode($atts) {
+    // Enqueue necessary scripts and styles
+    wp_enqueue_script('jquery');
+    
+    ob_start();
+    ?>
+    <div id="bpp-purchase-form-container" style="max-width: 800px; margin: 20px auto; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+        <h2 style="margin-top: 0;">Report a Purchase</h2>
+        
+        <div id="bpp-message" style="display:none; padding: 10px; margin-bottom: 15px; border-radius: 3px;"></div>
+        
+        <form id="bpp-purchase-form">
+            <div style="margin-bottom: 15px;">
+                <label for="bpp-year" style="display: block; margin-bottom: 5px; font-weight: bold;">Budget Year:</label>
+                <select id="bpp-year" name="budget_year" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    <option value="">-- Select Year --</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="bpp-account" style="display: block; margin-bottom: 5px; font-weight: bold;">Account:</label>
+                <select id="bpp-account" name="account_id" required disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    <option value="">-- Select Year First --</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="bpp-line-item" style="display: block; margin-bottom: 5px; font-weight: bold;">Item:</label>
+                <select id="bpp-line-item" name="line_item_id" required disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    <option value="">-- Select Account First --</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="bpp-purchase-date" style="display: block; margin-bottom: 5px; font-weight: bold;">Purchase Date:</label>
+                <input type="date" id="bpp-purchase-date" name="purchase_date" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="bpp-comment" style="display: block; margin-bottom: 5px; font-weight: bold;">Additional Comments (optional):</label>
+                <textarea id="bpp-comment" name="comment" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;"></textarea>
+            </div>
+            
+            <button type="submit" id="bpp-submit-btn" style="background: #0073aa; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; font-size: 16px;">
+                Submit Purchase
+            </button>
+        </form>
+    </div>
+    
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
+        var nonce = <?php echo wp_json_encode(wp_create_nonce('bpp_frontend_nonce')); ?>;
+        
+        // Load available years on page load
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'bpp_get_years',
+                nonce: nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    var $yearSelect = $('#bpp-year');
+                    $yearSelect.empty().append('<option value="">-- Select Year --</option>');
+                    $.each(response.data.years, function(index, year) {
+                        $yearSelect.append('<option value="' + year + '">' + year + '</option>');
+                    });
+                }
+            }
+        });
+        
+        // Load accounts when year is selected
+        $('#bpp-year').on('change', function() {
+            var year = $(this).val();
+            var $accountSelect = $('#bpp-account');
+            var $itemSelect = $('#bpp-line-item');
+            
+            // Reset dependent dropdowns
+            $accountSelect.prop('disabled', true).empty().append('<option value="">Loading...</option>');
+            $itemSelect.prop('disabled', true).empty().append('<option value="">-- Select Account First --</option>');
+            
+            if (!year) {
+                $accountSelect.empty().append('<option value="">-- Select Year First --</option>');
+                return;
+            }
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'bpp_get_accounts_by_year',
+                    year: year,
+                    nonce: nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $accountSelect.empty().append('<option value="">-- Select Account --</option>');
+                        $.each(response.data.accounts, function(index, account) {
+                            var $option = $('<option></option>')
+                                .val(account.id)
+                                .text(account.account_number + ' - ' + account.account_title + 
+                                    (account.location_name ? ' (' + account.location_name + ')' : ''));
+                            $accountSelect.append($option);
+                        });
+                        $accountSelect.prop('disabled', false);
+                    } else {
+                        $accountSelect.empty().append('<option value="">No accounts found</option>');
+                    }
+                }
+            });
+        });
+        
+        // Load line items when account is selected
+        $('#bpp-account').on('change', function() {
+            var accountId = $(this).val();
+            var $itemSelect = $('#bpp-line-item');
+            
+            $itemSelect.prop('disabled', true).empty().append('<option value="">Loading...</option>');
+            
+            if (!accountId) {
+                $itemSelect.empty().append('<option value="">-- Select Account First --</option>');
+                return;
+            }
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'bpp_get_line_items_by_account',
+                    account_id: accountId,
+                    nonce: nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $itemSelect.empty().append('<option value="">-- Select Item --</option>');
+                        $.each(response.data.items, function(index, item) {
+                            var itemText = item.item_name;
+                            if (item.quantity != null && item.price != null) {
+                                itemText += ' (Qty: ' + parseInt(item.quantity, 10) + ', Price: $' + parseFloat(item.price).toFixed(2) + ')';
+                            }
+                            if (item.purchased_date && item.purchased_date !== '0000-00-00' && item.purchased_date !== null) {
+                                itemText += ' [Already purchased: ' + item.purchased_date + ']';
+                            }
+                            var $option = $('<option></option>').val(item.id).text(itemText);
+                            $itemSelect.append($option);
+                        });
+                        $itemSelect.prop('disabled', false);
+                    } else {
+                        $itemSelect.empty().append('<option value="">No items found</option>');
+                    }
+                }
+            });
+        });
+        
+        // Handle form submission
+        $('#bpp-purchase-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            var $submitBtn = $('#bpp-submit-btn');
+            var $message = $('#bpp-message');
+            
+            $submitBtn.prop('disabled', true).text('Submitting...');
+            $message.hide();
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'bpp_submit_purchase',
+                    line_item_id: $('#bpp-line-item').val(),
+                    purchase_date: $('#bpp-purchase-date').val(),
+                    comment: $('#bpp-comment').val(),
+                    nonce: nonce
+                },
+                success: function(response) {
+                    $submitBtn.prop('disabled', false).text('Submit Purchase');
+                    
+                    if (response.success) {
+                        $message.css({
+                            'background-color': '#d4edda',
+                            'color': '#155724',
+                            'border': '1px solid #c3e6cb'
+                        }).text(response.data.message).show();
+                        
+                        // Reset form
+                        $('#bpp-purchase-form')[0].reset();
+                        $('#bpp-account').prop('disabled', true).empty().append('<option value="">-- Select Year First --</option>');
+                        $('#bpp-line-item').prop('disabled', true).empty().append('<option value="">-- Select Account First --</option>');
+                    } else {
+                        $message.css({
+                            'background-color': '#f8d7da',
+                            'color': '#721c24',
+                            'border': '1px solid #f5c6cb'
+                        }).text(response.data.message || 'An error occurred. Please try again.').show();
+                    }
+                },
+                error: function() {
+                    $submitBtn.prop('disabled', false).text('Submit Purchase');
+                    $message.css({
+                        'background-color': '#f8d7da',
+                        'color': '#721c24',
+                        'border': '1px solid #f5c6cb'
+                    }).text('Connection error. Please try again.').show();
+                }
+            });
+        });
+    });
+    </script>
+    <?php
+    return ob_get_clean();
+}
+
+
+// =============================================================================
+// AJAX Handlers for Frontend Form
+// =============================================================================
+
+// Get available years
+add_action('wp_ajax_bpp_get_years', 'bpp_ajax_get_years');
+
+function bpp_ajax_get_years() {
+    check_ajax_referer('bpp_frontend_nonce', 'nonce');
+    
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
+    
+    global $wpdb;
+    $table_accounts = $wpdb->prefix . 'bpp_accounts';
+    
+    $years = $wpdb->get_col("SELECT DISTINCT budget_year FROM $table_accounts ORDER BY budget_year DESC");
+    
+    if ($years) {
+        wp_send_json_success(['years' => $years]);
+    } else {
+        wp_send_json_error(['message' => 'No budget years found.']);
+    }
+}
+
+// Get accounts by year
+add_action('wp_ajax_bpp_get_accounts_by_year', 'bpp_ajax_get_accounts_by_year');
+
+function bpp_ajax_get_accounts_by_year() {
+    check_ajax_referer('bpp_frontend_nonce', 'nonce');
+    
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
+    
+    $year = isset($_POST['year']) ? intval($_POST['year']) : 0;
+    
+    // Validate year is within reasonable bounds
+    $current_year = intval(date('Y'));
+    if (!$year || $year < 1900 || $year > $current_year + 50) {
+        wp_send_json_error(['message' => 'Invalid year.']);
+    }
+    
+    global $wpdb;
+    $table_accounts = $wpdb->prefix . 'bpp_accounts';
+    
+    $accounts = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, account_title, account_number, location_name FROM $table_accounts WHERE budget_year = %d ORDER BY account_number ASC",
+        $year
+    ));
+    
+    if ($accounts) {
+        wp_send_json_success(['accounts' => $accounts]);
+    } else {
+        wp_send_json_error(['message' => 'No accounts found for this year.']);
+    }
+}
+
+// Get line items by account
+add_action('wp_ajax_bpp_get_line_items_by_account', 'bpp_ajax_get_line_items_by_account');
+
+function bpp_ajax_get_line_items_by_account() {
+    check_ajax_referer('bpp_frontend_nonce', 'nonce');
+    
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to access this feature.']);
+    }
+    
+    $account_id = isset($_POST['account_id']) ? intval($_POST['account_id']) : 0;
+    
+    if (!$account_id) {
+        wp_send_json_error(['message' => 'Invalid account.']);
+    }
+    
+    global $wpdb;
+    $table_items = $wpdb->prefix . 'bpp_line_items';
+    
+    $items = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, item_name, quantity, price, purchased_date, item_type FROM $table_items WHERE account_id = %d ORDER BY item_name ASC",
+        $account_id
+    ));
+    
+    if ($items) {
+        wp_send_json_success(['items' => $items]);
+    } else {
+        wp_send_json_error(['message' => 'No items found for this account.']);
+    }
+}
+
+// Submit purchase
+add_action('wp_ajax_bpp_submit_purchase', 'bpp_ajax_submit_purchase');
+
+function bpp_ajax_submit_purchase() {
+    check_ajax_referer('bpp_frontend_nonce', 'nonce');
+    
+    // Require user to be logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to submit purchases.']);
+    }
+    
+    $line_item_id = isset($_POST['line_item_id']) ? intval($_POST['line_item_id']) : 0;
+    $purchase_date = isset($_POST['purchase_date']) ? sanitize_text_field($_POST['purchase_date']) : '';
+    $comment = isset($_POST['comment']) ? sanitize_textarea_field($_POST['comment']) : '';
+    
+    if (!$line_item_id || !$purchase_date) {
+        wp_send_json_error(['message' => 'Missing required fields.']);
+    }
+    
+    // Validate date format
+    $date_obj = DateTime::createFromFormat('Y-m-d', $purchase_date);
+    if (!$date_obj || $date_obj->format('Y-m-d') !== $purchase_date) {
+        wp_send_json_error(['message' => 'Invalid date format.']);
+    }
+    
+    global $wpdb;
+    $table_items = $wpdb->prefix . 'bpp_line_items';
+    
+    // Verify that the line item exists before updating
+    $item_exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_items WHERE id = %d",
+        $line_item_id
+    ));
+    
+    if (!$item_exists) {
+        wp_send_json_error(['message' => 'Invalid line item specified.']);
+    }
+    
+    // Update the line item
+    $update_data = [
+        'purchased_date' => $purchase_date
+    ];
+    
+    $format = ['%s'];
+    
+    // Only update comment if provided
+    if (!empty($comment)) {
+        $update_data['comment'] = $comment;
+        $format[] = '%s';
+    }
+    
+    $result = $wpdb->update(
+        $table_items,
+        $update_data,
+        ['id' => $line_item_id],
+        $format,
+        ['%d']
+    );
+    
+    if ($result !== false) {
+        wp_send_json_success(['message' => 'Purchase reported successfully!']);
+    } else {
+        wp_send_json_error(['message' => 'Failed to update purchase information.']);
+    }
+}
+
