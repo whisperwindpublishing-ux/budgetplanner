@@ -1705,16 +1705,19 @@ function bpp_ajax_submit_purchase() {
         'purchased_date' => $purchase_date
     ];
     
+    $format = ['%s'];
+    
     // Only update comment if provided
     if (!empty($comment)) {
         $update_data['comment'] = $comment;
+        $format[] = '%s';
     }
     
     $result = $wpdb->update(
         $table_items,
         $update_data,
         ['id' => $line_item_id],
-        ['%s', '%s'],
+        $format,
         ['%d']
     );
     
