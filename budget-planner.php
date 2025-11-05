@@ -1639,7 +1639,9 @@ function bpp_ajax_get_accounts_by_year() {
     
     $year = isset($_POST['year']) ? intval($_POST['year']) : 0;
     
-    if (!$year) {
+    // Validate year is within reasonable bounds
+    $current_year = intval(date('Y'));
+    if (!$year || $year < 1900 || $year > $current_year + 50) {
         wp_send_json_error(['message' => 'Invalid year.']);
     }
     
